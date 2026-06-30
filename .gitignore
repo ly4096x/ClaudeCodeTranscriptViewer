@@ -1,0 +1,20 @@
+# dependencies
+/node_modules/
+
+# generated test artifacts (screenshots may capture the local desktop)
+/tests/screenshots/
+
+# local demo transcript (a real session; contains local paths) — keep it out of VCS.
+# Drop any .jsonl here and pass it to `node server.js sample/<file>.jsonl`.
+/sample/
+
+# logs / temp
+*.log
+*.tmp
+.DS_Store
+
+# scratch / one-off helper scripts
+/_*.mjs
+
+# Pages build output
+/dist/
