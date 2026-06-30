@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code — Transcript Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%E2%9C%BB%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Landing / drop zone, shown only until a transcript is loaded -->
+  <div id="landing" class="landing">
+    <div class="landing-box">
+      <div class="welcome-line"><span class="spark">✻</span> Welcome to Claude&nbsp;Code Transcript&nbsp;viewer</div>
+      <div class="landing-sub">Load a <code>.jsonl</code> session to replay it.</div>
+      <label id="dropzone" class="dropzone" for="fileInput">
+        <div class="dz-icon">⏏</div>
+        <div class="dz-main">Drop a <code>.jsonl</code> transcript here</div>
+        <div class="dz-or">or click to choose a file</div>
+        <input id="fileInput" type="file" accept=".jsonl,.json,.ndjson,application/x-ndjson" hidden />
+      </label>
+      <div id="landingError" class="landing-error" hidden></div>
+      <div class="landing-hint">
+        Tip: start the server with <code>node server.js path/to/session.jsonl</code> to auto-load.
+      </div>
+    </div>
+  </div>
+
+  <!-- Left sidebar: index of the user's own prompts -->
+  <aside id="sidebar" class="sidebar" hidden>
+    <nav id="sidebarList" class="sidebar-list"></nav>
+    <div id="sidebarResizer" class="sidebar-resizer" title="Drag to resize"></div>
+  </aside>
+  <!-- fold flag, sits outside the sidebar at the top edge -->
+  <button id="sidebarToggle" class="sidebar-toggle" title="Collapse/expand sidebar" hidden>◀</button>
+
+  <!-- Transcript view -->
+  <main id="view" class="view" hidden>
+    <div id="transcript" class="transcript"></div>
+    <div id="loadMoreBar" class="load-more-bar" hidden>
+      <button id="loadMoreBtn" class="load-more-btn"></button>
+    </div>
+  </main>
+
+  <!-- Floating controls (kept out of the way; not a statusline) -->
+  <button id="searchBtn" class="reload-btn" title="Search (Ctrl/Cmd+F)" hidden>⌕ find</button>
+  <button id="reloadBtn" class="reload-btn" title="Load another transcript" hidden>＋ load</button>
+
+  <!-- In-conversation find bar -->
+  <div id="searchBar" class="search-bar" hidden>
+    <span class="search-icon">⌕</span>
+    <input id="searchInput" type="search" placeholder="Search conversation…" autocomplete="off" spellcheck="false" />
+    <button id="searchCase" class="search-nav search-toggle" title="Case sensitive">Aa</button>
+    <button id="searchRegex" class="search-nav search-toggle" title="Regular expression">.*</button>
+    <span class="search-sep"></span>
+    <span id="searchScopes" class="search-scopes" title="Which content to search"></span>
+    <span id="searchCount" class="search-count">0/0</span>
+    <button id="searchPrev" class="search-nav" title="Previous (Shift+Enter)">↑</button>
+    <button id="searchNext" class="search-nav" title="Next (Enter)">↓</button>
+    <button id="searchClose" class="search-nav" title="Close (Esc)">✕</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

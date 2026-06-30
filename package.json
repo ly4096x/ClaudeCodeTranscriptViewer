@@ -1,0 +1,20 @@
+{
+  "name": "claude-code-demo-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A web viewer that renders Claude Code JSONL session transcripts with Claude Code's own look and feel.",
+  "type": "module",
+  "bin": {
+    "claude-code-viewer": "server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "verify": "node tests/verify.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

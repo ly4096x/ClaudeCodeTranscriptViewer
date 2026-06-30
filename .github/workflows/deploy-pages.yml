@@ -1,0 +1,37 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # peaceiris/actions-gh-pages pushes to the gh-pages branch
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build static site
+        run: |
+          mkdir -p dist
+          cp public/index.html public/app.js public/styles.css dist/
+          # bundle the demo transcript so the Pages site auto-loads it
+          cp demo/demo-session.jsonl dist/demo-session.jsonl
+          # also ship a screenshot for the (optional) embeds
+          mkdir -p dist/docs && cp docs/screenshot.png dist/docs/screenshot.png || true
+          touch dist/.nojekyll
+
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
