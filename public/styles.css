@@ -361,23 +361,27 @@ body.resizing #reloadBtn { transition: none; }
 #searchBtn { right: 14px; }
 #selectBtn { right: 92px; }
 
-/* GitHub corner — bottom-right triangle with an UPRIGHT octocat mark,
-   linking back to the repository */
+/* GitHub corner — bottom-right triangle with the original octocat (kept
+   upright, only translated), linking back to the repository */
 .github-corner { position: fixed; right: 0; bottom: 0; z-index: 55; pointer-events: none; }
 .github-corner svg { display: block; fill: var(--claude); color: var(--bg); }
 .github-corner svg path { pointer-events: auto; }
 .github-corner:hover svg { fill: #e6906f; }
+.github-corner:hover .octo-arm { animation: octocat-wave .56s ease-in-out; }
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-25deg); }
+  40%, 80% { transform: rotate(10deg); }
+}
 
 /* ===================== selective mode ===================== */
-/* widen the left gutter so the checkboxes have room */
-body.select-mode .transcript { padding-left: 58px; }
-/* keep the first items clear of the fixed action bar (select + filtered views) */
-body.select-mode .transcript,
-body.filtered-mode .transcript { padding-top: 64px; }
+/* Entering/leaving select mode must NOT move or resize the content: the
+   checkboxes overlay the transcript's existing left padding, and the action
+   bar floats at the bottom instead of pushing the content down. */
 body.select-mode #transcript [data-item] { position: relative; cursor: pointer; }
 .sel-check {
   display: none;
-  position: absolute; left: -34px; top: 3px;
+  position: absolute; left: -26px; top: 3px;
   width: 16px; height: 16px; margin: 0;
   appearance: none; -webkit-appearance: none;
   background: var(--bg-raised);
@@ -402,9 +406,14 @@ body.select-mode .sel-selected {
   box-shadow: 0 0 0 4px rgba(217, 119, 87, .07);
 }
 
-/* the selective-mode action bar sits top-center (the find bar owns the top-right) */
-.select-bar { right: auto; left: 50%; transform: translateX(-50%); }
+/* the selective-mode action bar floats bottom-center so it never displaces
+   content (the find bar owns the top-right); compound selector so it beats
+   the later .search-bar base rule */
+.search-bar.select-bar { top: auto; bottom: 14px; right: auto; left: 50%; transform: translateX(-50%); }
 .select-bar .search-count { min-width: 0; white-space: nowrap; }
+/* let the "Load more" button scroll clear of the bottom action bar */
+body.select-mode .load-more-bar,
+body.filtered-mode .load-more-bar { padding-bottom: 90px; }
 .search-nav:disabled { opacity: .45; cursor: default; }
 .search-nav:disabled:hover { color: var(--text-dim); border-color: var(--border-soft); background: transparent; }
 

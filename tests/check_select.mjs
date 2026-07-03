@@ -28,6 +28,11 @@ try {
 
   // ---------- 1. entering select mode ----------
   ok('select button visible after load', await page.$('#selectBtn:not([hidden])'));
+  const firstRect = (p) => p.$eval('#transcript [data-item]', (n) => {
+    const r = n.getBoundingClientRect();
+    return { top: r.top, left: r.left, width: r.width };
+  });
+  const rectBefore = await firstRect(page);
   await page.click('#selectBtn');
   ok('body enters select-mode', await page.evaluate(() => document.body.classList.contains('select-mode')));
   const boxCount = await page.$$eval('#transcript .sel-check',
@@ -38,10 +43,16 @@ try {
   ok('"show selected" disabled while nothing is checked', await page.$eval('#selApply', (n) => n.disabled));
   ok('checkbox uses the themed (custom) style, not the native look',
     await page.$eval('#transcript .sel-check', (n) => getComputedStyle(n).appearance === 'none'));
-  ok('action bar does not cover the first item (select mode)', await page.evaluate(() => {
+  const rectAfter = await firstRect(page);
+  ok('entering select mode does not move or resize the content',
+    rectBefore.top === rectAfter.top && rectBefore.left === rectAfter.left && rectBefore.width === rectAfter.width,
+    JSON.stringify({ rectBefore, rectAfter }));
+  ok('action bar floats at the bottom, clear of the first item', await page.evaluate(() => {
     const bar = document.getElementById('selectBar').getBoundingClientRect();
     const first = document.querySelector('#transcript [data-item]').getBoundingClientRect();
-    return first.top >= bar.bottom - 1;
+    const overlap = !(bar.top >= first.bottom || bar.bottom <= first.top ||
+                      bar.left >= first.right || bar.right <= first.left);
+    return bar.top > innerHeight / 2 && !overlap;
   }));
   await page.screenshot({ path: path.join(SHOT_DIR, '10-select-mode.png') });
 
@@ -113,10 +124,12 @@ try {
     (await page.textContent('#selCount')).trim());
   ok('"edit selection" replaces the picking buttons',
     await page.$('#selEdit:not([hidden])') && !(await page.$('#selApply:not([hidden])')));
-  ok('action bar does not cover the first item (filtered view)', await page.evaluate(() => {
+  ok('action bar stays at the bottom in the filtered view', await page.evaluate(() => {
     const bar = document.getElementById('selectBar').getBoundingClientRect();
     const first = document.querySelector('#transcript [data-item]').getBoundingClientRect();
-    return first.top >= bar.bottom - 1;
+    const overlap = !(bar.top >= first.bottom || bar.bottom <= first.top ||
+                      bar.left >= first.right || bar.right <= first.left);
+    return bar.top > innerHeight / 2 && !overlap;
   }));
   // sidebar lists exactly the visible user prompts
   const sidebarN = await page.$$eval('#sidebarList .sidebar-item', (ns) => ns.length);
@@ -152,6 +165,31 @@ try {
   ok('select button exits the filtered view back to normal',
     (await page.$$eval('#transcript [data-item]', (ns) => ns.length)) === itemCount &&
     await page.evaluate(() => document.getElementById('selectBar').hidden));
+
+  // ---------- 8. toggling on a scrolled page keeps the viewport fixed ----------
+  const probeIdx = await page.$$eval('#transcript [data-item]',
+    (ns) => ns[Math.floor(ns.length / 2)].dataset.item);
+  const probe = (p) => p.evaluate((idx) => {
+    const v = document.getElementById('view');
+    const n = document.querySelector(`#transcript [data-item="${idx}"]`);
+    return { st: v.scrollTop, top: n.getBoundingClientRect().top };
+  }, probeIdx);
+  await page.evaluate(() => {
+    const v = document.getElementById('view');
+    v.scrollTop = Math.floor((v.scrollHeight - v.clientHeight) / 2);
+  });
+  const scrolled = await page.evaluate(() => document.getElementById('view').scrollTop > 0);
+  if (scrolled) {
+    const pBefore = await probe(page);
+    await page.click('#selectBtn'); // enter
+    const pIn = await probe(page);
+    await page.click('#selectBtn'); // exit
+    const pOut = await probe(page);
+    ok('entering select mode keeps scroll + on-screen position (long transcript)',
+      pBefore.st === pIn.st && pBefore.top === pIn.top, JSON.stringify({ pBefore, pIn }));
+    ok('leaving select mode keeps scroll + on-screen position',
+      pBefore.st === pOut.st && pBefore.top === pOut.top, JSON.stringify({ pBefore, pOut }));
+  }
 
   const passed = results.filter((r) => r.pass).length;
   console.log(`\n${passed}/${results.length} checks passed`);

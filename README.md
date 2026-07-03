@@ -112,7 +112,8 @@ second.)
 
 Click **☑ select** to start picking: a themed checkbox appears before every
 item, and clicking anywhere on an item toggles it (folds/links are suspended
-while picking). The top bar tracks the count, with **all** / **none**
+while picking). Entering the mode never moves or resizes the content — a
+floating bar at the bottom tracks the count, with **all** / **none**
 shortcuts. **show selected** filters the transcript down to just the checked
 items — checkboxes disappear, and the sidebar and search follow the filtered
 view. From there, **edit selection** returns to picking (checks preserved), and
