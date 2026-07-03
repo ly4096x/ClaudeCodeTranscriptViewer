@@ -657,40 +657,136 @@ function buildItemNode(item) {
 // Render this many rows per batch; overridable via ?batch=N for testing huge files.
 const BATCH = Number(new URLSearchParams(location.search).get('batch')) || 600;
 let ITEMS = [];
-let cursor = 0;
+let cursor = 0;              // position in the current view, not an item index
+let VIEW = null;             // array of item indices to render (selective filter), or null = all
+let VIEW_SET = null;         // Set of the same indices for O(1) membership tests
+const viewLength = () => (VIEW ? VIEW.length : ITEMS.length);
 
 function renderBatch() {
   const tx = $('#transcript');
   const frag = document.createDocumentFragment();
-  const end = Math.min(cursor + BATCH, ITEMS.length);
+  const end = Math.min(cursor + BATCH, viewLength());
   for (; cursor < end; cursor++) {
-    const node = buildItemNode(ITEMS[cursor]);
-    if (node && node.dataset) node.dataset.item = String(cursor); // index for search nav
+    const idx = VIEW ? VIEW[cursor] : cursor;
+    const node = buildItemNode(ITEMS[idx]);
+    if (node && node.dataset) {
+      node.dataset.item = String(idx); // ORIGINAL item index — stable across filtered views
+      if (sel.mode === 'select') injectCheckbox(node);
+    }
     frag.appendChild(node);
   }
   tx.appendChild(frag);
   const bar = $('#loadMoreBar');
-  if (cursor < ITEMS.length) {
+  if (cursor < viewLength()) {
     bar.hidden = false;
-    $('#loadMoreBtn').textContent = `Load more — ${ITEMS.length - cursor} items remaining`;
+    $('#loadMoreBtn').textContent = `Load more — ${viewLength() - cursor} items remaining`;
   } else {
     bar.hidden = true;
   }
 }
 
-function showTranscript(entries) {
-  ITEMS = buildItems(entries);
+// Re-render the transcript restricted to `indices` (null = all items).
+function setView(indices) {
+  VIEW = indices;
+  VIEW_SET = indices ? new Set(indices) : null;
   cursor = 0;
   $('#transcript').innerHTML = '';
-  $('#landing').hidden = true;
-  $('#view').hidden = false;
-  $('#reloadBtn').hidden = false;
-  $('#searchBtn').hidden = false;
   closeSearch();
   renderBatch();
   buildSidebar();
   $('#view').scrollTop = 0;
-  updateSidebarActive(); // highlight the first prompt on load
+  updateSidebarActive(); // highlight the first visible prompt
+}
+
+function showTranscript(entries) {
+  ITEMS = buildItems(entries);
+  resetSelection();
+  $('#landing').hidden = true;
+  $('#view').hidden = false;
+  $('#reloadBtn').hidden = false;
+  $('#searchBtn').hidden = false;
+  $('#selectBtn').hidden = false;
+  setView(null);
+}
+
+/* ------------------------- selective mode ------------------------- */
+// normal: plain view · select: a checkbox before each item · filtered: only the
+// checked items are rendered (checkboxes hidden). The checked set survives mode
+// switches so a filter can be edited and re-applied.
+const sel = { mode: 'normal', checked: new Set() };
+
+function setItemChecked(node, box, on) {
+  box.checked = on;
+  const idx = Number(node.dataset.item);
+  if (on) sel.checked.add(idx); else sel.checked.delete(idx);
+  node.classList.toggle('sel-selected', on);
+  updateSelBar();
+}
+
+function injectCheckbox(node) {
+  if (node.querySelector(':scope > .sel-check')) return;
+  const box = el('input', 'sel-check');
+  box.type = 'checkbox';
+  box.checked = sel.checked.has(Number(node.dataset.item));
+  box.title = 'Select this item';
+  node.classList.toggle('sel-selected', box.checked);
+  box.addEventListener('change', () => setItemChecked(node, box, box.checked));
+  node.prepend(box);
+}
+
+// Push the checked set back into every rendered checkbox (after all/none).
+function syncCheckboxes() {
+  document.querySelectorAll('#transcript .sel-check').forEach((box) => {
+    const idx = Number(box.parentNode.dataset.item);
+    box.checked = sel.checked.has(idx);
+    box.parentNode.classList.toggle('sel-selected', box.checked);
+  });
+}
+
+function updateSelBar() {
+  const n = sel.checked.size;
+  $('#selCount').textContent = sel.mode === 'filtered'
+    ? `showing ${n} of ${ITEMS.length} items` : `${n} selected`;
+  const picking = sel.mode === 'select';
+  $('#selAll').hidden = !picking;
+  $('#selNone').hidden = !picking;
+  $('#selApply').hidden = !picking;
+  $('#selApply').disabled = n === 0;
+  $('#selEdit').hidden = sel.mode !== 'filtered';
+}
+
+function enterSelectMode() {
+  if (sel.mode === 'filtered') setView(null); // show everything again for picking
+  sel.mode = 'select';
+  document.body.classList.add('select-mode');
+  document.body.classList.remove('filtered-mode');
+  document.querySelectorAll('#transcript [data-item]').forEach(injectCheckbox);
+  $('#selectBar').hidden = false;
+  updateSelBar();
+}
+
+function applySelection() {
+  if (!sel.checked.size) return;
+  sel.mode = 'filtered';
+  document.body.classList.remove('select-mode');
+  document.body.classList.add('filtered-mode');
+  setView([...sel.checked].sort((a, b) => a - b));
+  updateSelBar();
+}
+
+function exitSelectMode() { // back to the normal full view
+  sel.mode = 'normal';
+  document.body.classList.remove('select-mode', 'filtered-mode');
+  $('#selectBar').hidden = true;
+  if (VIEW) setView(null);
+}
+
+function resetSelection() {
+  sel.mode = 'normal';
+  sel.checked.clear();
+  document.body.classList.remove('select-mode', 'filtered-mode');
+  $('#selectBar').hidden = true;
+  VIEW = null; VIEW_SET = null;
 }
 
 /* ------------------------- left sidebar (prompt index) ------------------------- */
@@ -704,6 +800,7 @@ function buildSidebar() {
   sidebarActive = -1;
   for (let idx = 0; idx < ITEMS.length; idx++) {
     if (ITEMS[idx].kind !== 'user-prompt') continue; // only the user's own typed prompts
+    if (VIEW_SET && !VIEW_SET.has(idx)) continue;    // hidden by the selective filter
     const preview = (ITEMS[idx].text || '').split('\n').map((s) => s.trim()).find(Boolean) || '(empty)';
     const btn = el('button', 'sidebar-item', preview);
     btn.dataset.target = String(idx);
@@ -864,7 +961,9 @@ function highlightIn(root, re) {
 }
 
 function ensureRendered(itemIndex) {
-  while (cursor <= itemIndex && cursor < ITEMS.length) renderBatch();
+  const pos = VIEW ? VIEW.indexOf(itemIndex) : itemIndex; // map item index -> view position
+  if (pos < 0) return; // item not in the current filtered view
+  while (cursor <= pos && cursor < viewLength()) renderBatch();
 }
 
 // Expand any collapsed thinking / folded blocks (and un-clamp results) that
@@ -903,6 +1002,7 @@ function runSearch(q) {
   if (re) {
     for (let idx = 0; idx < ITEMS.length; idx++) {
       const it = ITEMS[idx];
+      if (VIEW_SET && !VIEW_SET.has(idx)) continue; // hidden by the selective filter
       const sc = KIND_SCOPE[it.kind];
       if (sc && !scopeOn[sc]) continue; // scope toggled off
       if (it._t == null) it._t = itemText(it);
@@ -1017,15 +1117,50 @@ async function boot() {
   $('#loadMoreBtn').addEventListener('click', renderBatch);
   $('#reloadBtn').addEventListener('click', () => {
     closeSearch();
+    resetSelection();
     $('#view').hidden = true;
     $('#reloadBtn').hidden = true;
     $('#searchBtn').hidden = true;
+    $('#selectBtn').hidden = true;
     $('#sidebar').hidden = true;
     $('#sidebarToggle').hidden = true;
     document.body.classList.remove('has-sidebar');
     $('#landing').hidden = false;
     $('#landingError').hidden = true;
   });
+
+  // ---- selective mode controls ----
+  $('#selectBtn').addEventListener('click', () => {
+    if ($('#view').hidden) return;
+    if (sel.mode === 'normal') enterSelectMode(); else exitSelectMode();
+  });
+  $('#selAll').addEventListener('click', () => {
+    for (let i = 0; i < ITEMS.length; i++) sel.checked.add(i);
+    syncCheckboxes();
+    updateSelBar();
+  });
+  $('#selNone').addEventListener('click', () => {
+    sel.checked.clear();
+    syncCheckboxes();
+    updateSelBar();
+  });
+  $('#selApply').addEventListener('click', applySelection);
+  $('#selEdit').addEventListener('click', enterSelectMode);
+  $('#selExit').addEventListener('click', exitSelectMode);
+  // While picking, a click anywhere on an item toggles it. Capture phase, so
+  // folds / expanders / links inside the item don't also fire in select mode.
+  $('#transcript').addEventListener('click', (e) => {
+    if (sel.mode !== 'select') return;
+    if (e.target.classList && e.target.classList.contains('sel-check')) return; // native box path
+    const s = window.getSelection();
+    if (s && !s.isCollapsed) return; // let text selection through
+    const node = e.target.closest('[data-item]');
+    if (!node) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = node.querySelector(':scope > .sel-check');
+    if (box) setItemChecked(node, box, !box.checked);
+  }, true);
 
   // ---- search controls ----
   const searchInput = $('#searchInput');
@@ -1093,7 +1228,7 @@ async function boot() {
   let scrollScheduled = false;
   $('#view').addEventListener('scroll', (e) => {
     const v = e.target;
-    if (cursor < ITEMS.length && v.scrollTop + v.clientHeight > v.scrollHeight - 600) renderBatch();
+    if (cursor < viewLength() && v.scrollTop + v.clientHeight > v.scrollHeight - 600) renderBatch();
     if (!scrollScheduled) {
       scrollScheduled = true;
       requestAnimationFrame(() => { scrollScheduled = false; updateSidebarActive(); });

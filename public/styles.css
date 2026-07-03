@@ -151,6 +151,7 @@ body.sidebar-collapsed .sidebar-toggle { left: 0; }
 @media (max-width: 900px) {
   .sidebar, .sidebar-toggle { display: none; }
   body.has-sidebar .view { margin-left: 0; }
+  body.has-sidebar #reloadBtn { left: 14px; }
 }
 
 /* ===================== Transcript view ===================== */
@@ -348,7 +349,70 @@ body.sidebar-collapsed .sidebar-toggle { left: 0; }
   opacity: .55; transition: opacity .15s, color .15s, border-color .15s;
 }
 .reload-btn:hover { opacity: 1; color: var(--claude); border-color: var(--claude); }
-#searchBtn { right: 90px; }
+/* load lives top-LEFT, outside the prompt sidebar (right of the fold flag);
+   find/select stay top-right */
+#reloadBtn {
+  right: auto; left: 14px;
+  transition: left .18s ease, opacity .15s, color .15s, border-color .15s;
+}
+body.has-sidebar #reloadBtn { left: calc(var(--sidebar-w) + 40px); }
+body.has-sidebar.sidebar-collapsed #reloadBtn { left: 40px; }
+body.resizing #reloadBtn { transition: none; }
+#searchBtn { right: 14px; }
+#selectBtn { right: 92px; }
+
+/* GitHub corner (octocat) — bottom-right, links back to the repository.
+   rotate(90deg) turns the top-right corner artwork into a bottom-right one. */
+.github-corner { position: fixed; right: 0; bottom: 0; z-index: 55; pointer-events: none; }
+.github-corner svg { display: block; fill: var(--claude); color: var(--bg); transform: rotate(90deg); }
+.github-corner svg path { pointer-events: auto; }
+.github-corner:hover svg { fill: #e6906f; }
+.github-corner:hover .octo-arm { animation: octocat-wave .56s ease-in-out; }
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-25deg); }
+  40%, 80% { transform: rotate(10deg); }
+}
+
+/* ===================== selective mode ===================== */
+/* widen the left gutter so the checkboxes have room */
+body.select-mode .transcript { padding-left: 58px; }
+/* keep the first items clear of the fixed action bar (select + filtered views) */
+body.select-mode .transcript,
+body.filtered-mode .transcript { padding-top: 64px; }
+body.select-mode #transcript [data-item] { position: relative; cursor: pointer; }
+.sel-check {
+  display: none;
+  position: absolute; left: -34px; top: 3px;
+  width: 16px; height: 16px; margin: 0;
+  appearance: none; -webkit-appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.sel-check:hover { border-color: var(--claude); }
+.sel-check:focus-visible { outline: 1px solid var(--claude); outline-offset: 1px; }
+.sel-check:checked { background: var(--claude); border-color: var(--claude); }
+.sel-check:checked::after {
+  content: '✓';
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+  color: #1a1411; font-size: 12px; font-weight: 700; line-height: 1;
+}
+body.select-mode .sel-check { display: block; }
+body.select-mode .sel-selected {
+  background: rgba(217, 119, 87, .07);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgba(217, 119, 87, .07);
+}
+
+/* the selective-mode action bar sits top-center (the find bar owns the top-right) */
+.select-bar { right: auto; left: 50%; transform: translateX(-50%); }
+.select-bar .search-count { min-width: 0; white-space: nowrap; }
+.search-nav:disabled { opacity: .45; cursor: default; }
+.search-nav:disabled:hover { color: var(--text-dim); border-color: var(--border-soft); background: transparent; }
 
 /* in-conversation find bar */
 .search-bar {

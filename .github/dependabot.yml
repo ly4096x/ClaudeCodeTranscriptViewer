@@ -1,10 +1,14 @@
 version: 2
 updates:
-  # npm dependencies (the Playwright test library)
+  # npm dependencies (the Playwright test library) — pnpm-lock.yaml is
+  # handled by the npm ecosystem. cooldown mirrors pnpm's minimumReleaseAge:
+  # let releases soak for 7 days before proposing them.
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       npm-dev:
@@ -15,6 +19,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       actions:

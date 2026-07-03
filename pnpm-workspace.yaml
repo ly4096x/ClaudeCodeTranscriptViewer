@@ -1,0 +1,4 @@
+# pnpm settings (pnpm >= 10 reads config from this file)
+# Supply-chain guard: only install versions published at least 7 days ago,
+# so brand-new (potentially compromised) releases get soak time first.
+minimumReleaseAge: 10080 # minutes = 7 days

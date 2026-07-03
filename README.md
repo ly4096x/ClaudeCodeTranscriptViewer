@@ -21,12 +21,16 @@ your browser).
 - ✅ **More message types** — TodoWrite checklists, slash commands, images, and Markdown (code, tables, lists, links).
 - 📑 **Prompt sidebar** — indexes only the prompts *you* typed; click to jump, auto-highlights the current one while scrolling, and is **resizable** + **foldable**.
 - 🔍 **Full-transcript search** — `Ctrl/Cmd-F`, **regex** (`.*`), **case-sensitive** (`Aa`), and **per-kind scopes** (prompt / answer / tool / thinking / summary / skill / system). The current match glows **bright yellow**, and collapsed blocks auto-expand when you land on a hit.
+- ☑️ **Selective mode** — click **☑ select**, tick any items (clicking anywhere on an item toggles it), then **show selected** to filter the view down to just those items; **edit selection** or exit back to the full transcript anytime.
 - ⚡ **Scales** — incremental "Load more" rendering handles huge transcripts (40 MB+) and indexes thousands of search matches in well under a second.
 - 🔒 **Safe & local** — all transcript text is escaped before formatting (no markup injection), and the server binds `127.0.0.1` by default.
 
 ## Requirements
 
 - Node.js ≥ 18 (no runtime dependencies for the viewer itself)
+- [pnpm](https://pnpm.io) — only for installing the Playwright test library.
+  `pnpm-workspace.yaml` sets `minimumReleaseAge: 10080` (7 days), so freshly
+  published dependency versions soak for a week before they can be installed.
 
 ## Usage
 
@@ -104,17 +108,28 @@ system** (off by default) — so you choose exactly which content to search. (On
 the bundled 42 MB sample, search indexes thousands of matches in well under a
 second.)
 
+### Selective mode
+
+Click **☑ select** to start picking: a themed checkbox appears before every
+item, and clicking anywhere on an item toggles it (folds/links are suspended
+while picking). The top bar tracks the count, with **all** / **none**
+shortcuts. **show selected** filters the transcript down to just the checked
+items — checkboxes disappear, and the sidebar and search follow the filtered
+view. From there, **edit selection** returns to picking (checks preserved), and
+**✕** (or **☑ select** again) restores the normal full view.
+
 ## Project layout
 
 ```
-server.js            zero-dependency static server + --file CLI / upload API
-public/index.html    markup (landing/upload + transcript view)
-public/styles.css    Claude Code dark-theme palette & layout
-public/app.js        JSONL parsing + Claude Code-style renderer
-demo/                a crafted English demo transcript (used for the screenshot)
-docs/screenshot.png  the README screenshot
-tests/verify.mjs     Playwright (real, non-headless browser) verification
-tests/robustness.mjs Playwright pass over several real transcripts
+server.js             zero-dependency static server + --file CLI / upload API
+public/index.html     markup (landing/upload + transcript view)
+public/styles.css     Claude Code dark-theme palette & layout
+public/app.js         JSONL parsing + Claude Code-style renderer
+demo/                 a crafted English demo transcript (used for the screenshot)
+docs/screenshot.png   the README screenshot
+pnpm-workspace.yaml   pnpm settings (7-day dependency soak time)
+tests/verify.mjs      Playwright (real, non-headless browser) verification
+tests/robustness.mjs  Playwright pass over several real transcripts
 ```
 
 ## Verification (Playwright, real non-headless browser)
@@ -123,7 +138,7 @@ The test scripts launch a **real, non-headless** Chromium and assert the layout
 and behavior, saving screenshots to `tests/screenshots/`.
 
 ```bash
-npm install                 # installs the playwright library
+pnpm install                # installs the playwright library
 
 # The scripts (tests/launch.mjs) use $CHROMIUM_BIN as Playwright's executablePath.
 # Provide a real browser one of two ways:
@@ -141,8 +156,10 @@ BASE_URL=http://127.0.0.1:5858 node tests/verify.mjs   # 21 layout/behavior chec
 ```
 
 Other suites: `tests/check_search.mjs` (search), `tests/check_sidebar.mjs`
-(prompt sidebar), `tests/check_fixes.mjs`, `tests/robustness.mjs` (many real
-transcripts). All honor `BASE_URL` / `CHROMIUM_BIN` / `DISPLAY`.
+(prompt sidebar), `tests/check_select.mjs` (selective mode),
+`tests/check_layout.mjs` (floating controls + GitHub corner),
+`tests/check_fixes.mjs`, `tests/robustness.mjs` (many real transcripts). All
+honor `BASE_URL` / `CHROMIUM_BIN` / `DISPLAY`.
 
 `tests/verify.mjs` checks, among other things: server auto-load, all message
 types render, **no chat input box and no bottom statusline**, the dark palette
@@ -152,7 +169,8 @@ and Claude brand orange (`#d97757`), thinking expand/collapse, diff rendering,
 ## Design notes
 
 - **No statusline, no input prompt box** — by request. The only chrome is the
-  faint top-right "⌕ find" / "＋ load" buttons and the find bar (the search field
-  is a find box, not a chat prompt).
+  faint "＋ load" button (top-left, beside the sidebar), the top-right
+  "☑ select" / "⌕ find" buttons with their bars (the search field is a find
+  box, not a chat prompt), and the GitHub corner at the bottom-right.
 - The viewer escapes all transcript text before formatting, so transcript
   content cannot inject markup.
