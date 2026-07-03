@@ -361,18 +361,12 @@ body.resizing #reloadBtn { transition: none; }
 #searchBtn { right: 14px; }
 #selectBtn { right: 92px; }
 
-/* GitHub corner (octocat) — bottom-right, links back to the repository.
-   rotate(90deg) turns the top-right corner artwork into a bottom-right one. */
+/* GitHub corner — bottom-right triangle with an UPRIGHT octocat mark,
+   linking back to the repository */
 .github-corner { position: fixed; right: 0; bottom: 0; z-index: 55; pointer-events: none; }
-.github-corner svg { display: block; fill: var(--claude); color: var(--bg); transform: rotate(90deg); }
+.github-corner svg { display: block; fill: var(--claude); color: var(--bg); }
 .github-corner svg path { pointer-events: auto; }
 .github-corner:hover svg { fill: #e6906f; }
-.github-corner:hover .octo-arm { animation: octocat-wave .56s ease-in-out; }
-@keyframes octocat-wave {
-  0%, 100% { transform: rotate(0); }
-  20%, 60% { transform: rotate(-25deg); }
-  40%, 80% { transform: rotate(10deg); }
-}
 
 /* ===================== selective mode ===================== */
 /* widen the left gutter so the checkboxes have room */
